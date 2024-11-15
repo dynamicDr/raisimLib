@@ -72,6 +72,7 @@ class Critic:
 
 class MLP(nn.Module):
     def __init__(self, shape, actionvation_fn, input_size, output_size):
+        self.obs_dim = input_size
         super(MLP, self).__init__()
         self.activation_fn = actionvation_fn
 

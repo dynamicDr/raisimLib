@@ -7,19 +7,25 @@ import math
 import time
 import torch
 import argparse
-
+from raisimGymTorch.attack.fgsm import FGSM
 
 # configuration
 parser = argparse.ArgumentParser()
+parser.add_argument('-r', '--robot', help='anymal or aliengo', type=str, default='aliengo')
 parser.add_argument('-w', '--weight', help='trained weight path', type=str, default='')
 args = parser.parse_args()
+
+robot_name = args.robot
+
+
+
 
 # directories
 task_path = os.path.dirname(os.path.realpath(__file__))
 home_path = task_path + "/../../../../.."
 
 # config
-cfg = YAML().load(open(task_path + "/cfg.yaml", 'r'))
+cfg = YAML().load(open(task_path + f"/cfg_{robot_name}.yaml", 'r'))
 
 # create environment from the configuration file
 cfg['environment']['num_envs'] = 1
@@ -54,13 +60,21 @@ else:
     env.load_scaling(weight_dir, int(iteration_number))
     env.turn_on_visualization()
 
-    # max_steps = 1000000
     max_steps = 1000 ## 10 secs
+
+    """
+    ╔═════════
+    ║ Attack 
+    ╚═════════
+    """
+    actor_attacker = FGSM(loaded_graph, eps=0.2)
 
     for step in range(max_steps):
         time.sleep(0.01)
         obs = env.observe(False)
-        action_ll = loaded_graph.architecture(torch.from_numpy(obs).cpu())
+        obs=torch.from_numpy(obs).cpu()
+        obs = actor_attacker(obs)
+        action_ll = loaded_graph.architecture(obs)
         reward_ll, dones = env.step(action_ll.cpu().detach().numpy())
         reward_ll_sum = reward_ll_sum + reward_ll[0]
         if dones or step == max_steps - 1:

@@ -16,16 +16,19 @@ import datetime
 import argparse
 
 
-# task specification
-task_name = "anymal_locomotion"
 
 # configuration
 parser = argparse.ArgumentParser()
+parser.add_argument('-r', '--robot', help='anymal or aliengo', type=str, default='aliengo')
 parser.add_argument('-m', '--mode', help='set mode either train or test', type=str, default='train')
 parser.add_argument('-w', '--weight', help='pre-trained weight path', type=str, default='')
 args = parser.parse_args()
 mode = args.mode
 weight_path = args.weight
+
+# task specification
+robot_name = args.robot
+task_name = f"{robot_name}_locomotion"
 
 # check if gpu is available
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -35,7 +38,7 @@ task_path = os.path.dirname(os.path.realpath(__file__))
 home_path = task_path + "/../../../../.."
 
 # config
-cfg = YAML().load(open(task_path + "/cfg.yaml", 'r'))
+cfg = YAML().load(open(task_path + f"/cfg_{robot_name}.yaml", 'r'))
 
 # create environment from the configuration file
 env = VecEnv(RaisimGymEnv(home_path + "/rsc", dump(cfg['environment'], Dumper=RoundTripDumper)))
@@ -44,6 +47,7 @@ env.seed(cfg['seed'])
 # shortcuts
 ob_dim = env.num_obs
 act_dim = env.num_acts
+# print(ob_dim,act_dim) ==> 34 12
 num_threads = cfg['environment']['num_threads']
 
 # Training
@@ -63,7 +67,7 @@ critic = ppo_module.Critic(ppo_module.MLP(cfg['architecture']['value_net'], nn.L
                            device)
 
 saver = ConfigurationSaver(log_dir=home_path + "/raisimGymTorch/data/"+task_name,
-                           save_items=[task_path + "/cfg.yaml", task_path + "/Environment.hpp"])
+                           save_items=[task_path + "/cfg.yaml", task_path + f"/Environment_{robot_name}.hpp"])
 tensorboard_launcher(saver.data_dir+"/..")  # press refresh (F5) after the first ppo update
 
 ppo = PPO.PPO(actor=actor,
